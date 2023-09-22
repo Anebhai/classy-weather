@@ -1,5 +1,4 @@
 import React from "react";
-
 function getWeatherIcon(wmoCode) {
   const icons = new Map([
     [[0], "☀️"],
@@ -33,20 +32,21 @@ function formatDay(dateStr) {
 }
 
 class App extends React.Component {
-  state = {
-    location: "",
-    isLoading: false,
-    displayLocation: "",
-    weather: {},
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      location: "lisbon",
+      isLoading: false,
+      displayLocation: "",
+      weather: {},
+    };
+    this.fetchWeather = this.fetchWeather.bind(this);
+  }
 
-  fetchWeather = async () => {
-    if (this.state.location.length < 3) return this.setState({ weather: {} });
-
+  async fetchWeather() {
     try {
-      this.setState({ isLoading: true });
-
       // 1) Getting location (geocoding)
+      this.setState({ isLoading: true });
       const geoRes = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${this.state.location}`
       );
@@ -57,7 +57,6 @@ class App extends React.Component {
 
       const { latitude, longitude, timezone, name, country_code } =
         geoData.results.at(0);
-
       this.setState({
         displayLocation: `${name} ${convertToFlag(country_code)}`,
       });
@@ -69,41 +68,25 @@ class App extends React.Component {
       const weatherData = await weatherRes.json();
       this.setState({ weather: weatherData.daily });
     } catch (err) {
-      console.error(err);
+      console.err(err);
     } finally {
       this.setState({ isLoading: false });
     }
-  };
-
-  setLocation = (e) => this.setState({ location: e.target.value });
-
-  // useEffect []
-  componentDidMount() {
-    // this.fetchWeather();
-
-    this.setState({ location: localStorage.getItem("location") || "" });
   }
-
-  // useEffect [location]
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.location !== prevState.location) {
-      this.fetchWeather();
-
-      localStorage.setItem("location", this.state.location);
-    }
-  }
-
   render() {
     return (
       <div className="app">
         <h1>Classy Weather</h1>
-        <Input
-          location={this.state.location}
-          onChangeLocation={this.setLocation}
-        />
-
-        {this.state.isLoading && <p className="loader">Loading...</p>}
-
+        <div>
+          <input
+            type="text"
+            placeholder="search from Location..."
+            value={this.state.location}
+            onChange={(e) => this.setState({ location: e.target.value })}
+          />
+        </div>
+        <button onClick={this.fetchWeather}>Get Location</button>
+        {this.state.isLoading && <p>Loading...</p>}
         {this.state.weather.weathercode && (
           <Weather
             weather={this.state.weather}
@@ -117,31 +100,14 @@ class App extends React.Component {
 
 export default App;
 
-class Input extends React.Component {
-  render() {
-    return (
-      <div>
-        <input
-          type="text"
-          placeholder="Search from location..."
-          value={this.props.location}
-          onChange={this.props.onChangeLocation}
-        />
-      </div>
-    );
-  }
-}
-
 class Weather extends React.Component {
-  componentWillUnmount() {
-    console.log("Weather will unmount");
-  }
-
   render() {
+    console.log(this.props);
     const {
       temperature_2m_max: max,
       temperature_2m_min: min,
       time: dates,
+
       weathercode: codes,
     } = this.props.weather;
 
@@ -156,7 +122,7 @@ class Weather extends React.Component {
               min={min.at(i)}
               code={codes.at(i)}
               key={date}
-              isToday={i === 0}
+              today={i === 0}
             />
           ))}
         </ul>
@@ -167,14 +133,13 @@ class Weather extends React.Component {
 
 class Day extends React.Component {
   render() {
-    const { date, max, min, code, isToday } = this.props;
-
+    const { date, max, min, code, today } = this.props;
     return (
       <li className="day">
         <span>{getWeatherIcon(code)}</span>
-        <p>{isToday ? "Today" : formatDay(date)}</p>
+        <p>{today ? "Today" : formatDay(date)}</p>
         <p>
-          {Math.floor(min)}&deg; &mdash; <strong>{Math.ceil(max)}&deg;</strong>
+          {Math.floor(min)} &deg; &mdash; <strong>{Math.ceil(max)}&deg;</strong>
         </p>
       </li>
     );
